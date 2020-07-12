@@ -9,7 +9,14 @@ c.height = height;
 let objectList = [];
 let keyList = {};
 
-$("#UI").hide();
+// UI for pause
+$("#pause").hide();
+$("#restart").hide();
+$("#resume").hide();
+$("#quit").hide();
+
+$("#gameOver").hide();
+
 //constructors
 class Battler {
   constructor(id, hp, width, height) {
@@ -28,25 +35,66 @@ class Battler {
     this.totalFrame = sprite[id].totalFrame || 1;
     //stand, walk, attack
     this.currentAction = "stand";
-    this.standAnimation = sprite[id].stand;
-    this.walkAnimation = sprite[id].walk;
-    this.attackAnimation = sprite[id].attack;
+    for (let keys in sprite[id]){
+      if (sprite[id][keys].nodeName === "IMG"){
+        this[`${keys}Animation`] = sprite[id][keys];
+      }
+    }
     //import
-    this.listIndex = objectList.push(this) - 1;
+    this.identifier = parseInt(String(Math.random()).substring(2))
+    objectList.push(this);
   }
 
   jumpTo(x, y) {
+    if (!this.isProjectile){
+      let realX = x;
+      if (this.facingRight === 0){
+        realX -= this.width;
+      }
+      if (realX < -20){
+        x = -20;
+        if (this.facingRight === 0){
+          x += this.width;
+        }
+      }
+      if (realX > width - this.width){
+        x = width - this.width;
+        if (this.facingRight === 0){
+          x += this.width;
+        }
+      }
+      if (y > height - this.height){
+        y = height - this.height;
+      }
+      if (y < -25){
+        y = -25;
+      }
+    }
     this.x = x;
     this.y = y;
+  }
+  
+  flipAround(){
+    if (this.facingRight === 0) {
+      this.facingRight = 1;
+      this.x -= this.width;
+    }else{
+      this.facingRight = 0;
+      this.x += this.width;//change to hitbox
+    }
   }
 
   changeAction(action) {
     //animation
-    if (action !== "stand" && action !== "walk" && action !== "attack") {
+    if (typeof action !== "string") {
       return;
     }
     this.currentFrame = 0;
-    this.totalFrame = Math.floor(this[`${action}Animation`].width / this.width);
+    if (this[`${action}Animation`]){
+      this.totalFrame = Math.floor(this[`${action}Animation`].width / this.width);
+    }else{
+      this.totalFrame = 0;
+    }
     this.currentAction = action;
   }
 
@@ -76,23 +124,39 @@ class Battler {
   }
   
   gainHp(value){
+    //if (this.changeAI)
     this.hp += value;
     if (this.hp <= 0){
+      if (this === mainChar){
+        $("#gameOver").show();
+        $("#restart").show();
+        $("#quit").show();
+        pause();
+      }
       this.destroySelf();
     }
   }
   
   destroySelf(){
-    objectList[this.listIndex] = undefined;
+    for (let i = 0; i < objectList.length; i ++){
+      if (objectList[i].identifier === this.identifier){
+        objectList.splice(i, 1);
+        break;
+      }
+    }
+    if (this.stage){
+      this.stage.removeEnemy(this);
+    }
   }
 }
 
 class Projectile extends Battler {
-  constructor(id, hp, width, height, speed, dir, damage) {
+  constructor(id, hp, width, height, speed, dir, damage, isFriendly) {
     super(id,hp,width,height)
     this.speed = speed;
     this.facingRight = dir;
     this.damage = damage;
+    this.isFriendly = isFriendly
     this.isProjectile = true;
   }
   
@@ -114,14 +178,20 @@ class Main extends Battler {
 }
 
 class Mobs extends Battler {
-  constructor(id, hp, width, height) {
+  constructor(id, hp, width, height, stage) {
     super(id, hp, width, height);
     this.isMainChar = false;
     this.AI = {
-      initial: ["toPlayer"],
-      repeat: ["attack", "wait1000", "toPlayer", "wait250"]
+      initial: ["toPlayerY", "facePlayer"],
+      repeat: ["rangedAttack10", "wait1000", "toPlayer", "wait250", "toPlayerY", "facePlayer"]
     };
+    this.count = 0;
     this.act;
+    if (stage){
+      this.stage = stage;
+      stage.newEnemy(this);
+    }
+    this.changeAI = false
   }
   
   onAttack(){
@@ -131,7 +201,17 @@ class Mobs extends Battler {
       mainChar.gainHp(-this.damage);
     }
   }
-
+  
+  onRangeAttack(summoner){
+    //summon bullet
+    let bulletYOffset = 0;
+    if(summoner.id === 4){
+      bulletYOffset = -4
+    }
+    let bullet = new Projectile(2,60,128,128, 10, summoner.facingRight, 1, false)
+    bullet.jumpTo(summoner.x + summoner.hitBox[summoner.facingRight][0], summoner.y+bulletYOffset);
+  }
+  
   behavior() {
     //should run every time handlemoveframe function runs
     //check if act exist
@@ -166,6 +246,49 @@ class Mobs extends Battler {
         }
         return;
       }
+      if (this.act === "toPlayerX"){
+        if (this.x - mainChar.x <= this.hitBox[this.facingRight][2]){
+          this.resolveAct("toPlayerX");
+        }else{
+          //move towards player
+          if (this.x < mainChar.x){
+            this.jumpTo(this.x + this.speed, this.y);
+            if (this.facingRight === 0){
+              this.facingRight = 1;
+              this.x -= this.width;//change to hitbox
+            }
+          }else{
+            this.jumpTo(this.x - this.speed, this.y);
+            if (this.facingRight === 1){
+              this.facingRight = 0;
+              this.x += this.width;//change to hitbox
+            }
+          }
+        }
+        return;
+      }
+      if (this.act === "toPlayerY"){
+        if (this.y - mainChar.y <= this.hitBox[0][3] && this.y + this.hitBox[0][3] >= mainChar.y){
+          this.resolveAct("toPlayerY");
+          
+        }else{
+          if (this.y < mainChar.y){
+            this.jumpTo(this.x, this.y + this.speed);
+          }else{
+            this.jumpTo(this.x, this.y - this.speed);
+          }
+        }
+        return;
+      }
+      if (this.act === "facePlayer"){
+        if (this.x < mainChar.x && !this.facingRight){
+          this.flipAround();
+        }else if (this.x > mainChar.x && this.facingRight){
+          this.flipAround();
+        }
+        this.resolveAct("facePlayer");
+        return;
+      }
       if (this.act === "attack"){
         if (this.currentAction !== "attack"){
           this.changeAction("attack");
@@ -173,6 +296,23 @@ class Mobs extends Battler {
         }
         return;
       }
+      if(this.act.includes("rangedAttack")){
+        if (this.currentAction !== "attack2"){
+          this.changeAction("attack2");
+        }
+        let repeatTimes = parseInt(this.act.substring(12));
+        if (isNaN(repeatTimes)){
+          repeatTimes = 1;
+        }
+        this.onRangeAttack(this);
+        this.count ++;
+        if (this.count >= repeatTimes){
+          this.count = 0;
+          this.resolveAct(this.act);
+        }
+        return;
+      }
+      
       if (this.act.includes("wait")){
         this.changeAction("stand");
         if (this.selfTimer !== undefined){
@@ -180,7 +320,7 @@ class Mobs extends Battler {
         }else{
           this.selfTimer = 0;
         }
-        if (this.selfTimer >= parseInt(this.act.substring(4)) ){//1000 can be set to something else
+        if (this.selfTimer >= parseInt(this.act.substring(4)) ){
           this.resolveAct(this.act);
           this.selfTimer = undefined;
         }
@@ -208,20 +348,72 @@ class Mobs extends Battler {
   }
 }
 
+class Boss extends Mobs{
+  constructor(id, hp, width, height, stage) {
+    super(id, hp, width, height);
+    this.changeAI = true
+  }
+}
+
 class DialogueController{
   constructor(){
     this.queue = [];
     this.showingDialogue = false;
+    this.onDialogueFinish;
+    //container
+    let $container = $("<div>").addClass("dialogueContainer");
+    this.setContainer($container);
+    $("#canvasContainer").append($container);
+    $container.hide();
+    this.container = $container;
+    //img
+    let $img = $("<img>").addClass("dialogueImg");
+    $container.append($img);
+    this.img = $img;
+    //text
+    let $text = $("<div>").addClass("dialogueText");
+    $container.append($text);
+    this.text = $text;
+  }
+  
+  attachHandler(){
+    $(document).one("keypress", () => {
+      this.resolveDialogue();
+    });
+  }
+  
+  setContainer(container, isTop){
+    if (isTop){
+      container.css("bottom", `${height + 7}px`);
+    }else{
+      container.css("bottom", `${height * 0.2}px`);
+    }
+    container.css("height", `${height * 0.2}px`);
   }
   
   renderDialogue(){
-    
+    pause();
+    this.showingDialogue = true;
+    this.container.show();
+    let dialo = this.queue[0];
+    this.img.attr("src", dialo.img);
+    this.text.text(dialo.text);
+    this.setContainer(this.container, dialo.isTop)
+    this.attachHandler();
   }
   
   resolveDialogue(){
     this.queue.shift();
     if (this.queue.length > 0){
       this.renderDialogue();
+    }else{
+      play();
+      this.showingDialogue = false;
+      this.container.hide();
+      if (this.onDialogueFinish){
+        this.onDialogueFinish();
+        this.onDialogueFinish = undefined;
+      }
     }
   }
 }
@@ -229,10 +421,39 @@ class DialogueController{
 class Dialogue{
   constructor(text, img, isTop){
     this.text = text;
-    let image = new Image();
-    image.src = img;
-    this.img = image;
+    this.img = img;
     this.isTop = isTop;
+  }
+}
+
+class Stage{
+  constructor(onStart, onEnd){
+    this.enemyList = [];
+    this.onEnd = onEnd;
+    this.onStart = onStart;
+  }
+  
+  startStage(){
+    this.onStart(this);
+  }
+  
+  newEnemy(enemy){
+    this.enemyList.push(enemy);
+  }
+  
+  removeEnemy(enemy){
+    for (let i = 0; i < this.enemyList.length; i ++){
+      if (enemy === this.enemyList[i]){
+        this.enemyList.splice(i, 1);
+        break;
+      }
+    }
+    //check if empty
+    if (this.enemyList.length === 0){
+      if (this.onEnd){
+        this.onEnd(this);
+      }
+    }
   }
 }
 
@@ -240,7 +461,7 @@ class Dialogue{
 function render() {
   //empty
   ctx.clearRect(0, 0, width, height);
-  //render
+  //render objects
   for (let key in objectList) {
     if (!objectList[key]){
       continue;
@@ -347,9 +568,8 @@ function handleKeys() {
   if (keyList["j"]) {
     if (mainChar.currentAction !== "attack") {
       mainChar.changeAction("attack");
-      let bullet = new Projectile(2,25,128,128, 10, mainChar.facingRight, mainChar.damage)
+      let bullet = new Projectile(2,60,128,128, 10, mainChar.facingRight, mainChar.damage, true)
       bullet.jumpTo(mainChar.x + mainChar.hitBox[mainChar.facingRight][0], mainChar.y+10)
-      
     }
   }
   if (mainChar.currentAction !== "attack") {
@@ -373,11 +593,13 @@ function handleMoveFrames() {
     if (object.currentFrame >= object.totalFrame) {
       object.currentFrame = 0;
       //check if attacking
-      if (object.currentAction === "attack") {
+      if (object.currentAction.includes("attack")) {
         object.changeAction("walk");
         //check if a mob
-        if (object.act === "attack"){
-          object.resolveAct("attack");
+        if (object.act){
+          if (object.act.includes("attack")){
+            object.resolveAct(object.act);
+          }
         }
       }
     }
@@ -387,12 +609,22 @@ function handleMoveFrames() {
     
     
     if(object.id === 2){
-      objectList.forEach((v,i)=>{
-        if(v !== undefined && v.id === 1 && object.isCollide(v)){
-          v.gainHp(-object.damage);
-          object.gainHp(-233);
+      if(object.isFriendly){
+        objectList.forEach((v,i)=>{
+          if(v !== undefined && object.isCollide(v)){
+            if(v.id === 1 || v.id === 3 || v.id === 4){ //check id to see if is enemy
+              v.gainHp(-object.damage);
+              object.gainHp(-2333); //kills bullet
+              return;
+            }
+          }
+        })
+      }else{
+        if(object.isCollide(mainChar)){
+          mainChar.gainHp(-object.damage)
+          object.gainHp(-2333); //kills bullet
         }
-      })
+      }
     }
     
   }
@@ -422,6 +654,10 @@ let sprite = [
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyWalk.png?v=1594501701844",
     attack:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyAttack.png?v=1594502053544",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyAttack.png?v=1594502053544",
+    block:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fguy%20blocking.gif?v=1594581470432",
     hitBox: [[-110,16,85,109],[25,16,85,109]] //[[offset x, offset y, width, height],[]]
     //[[a, b, c, d], [e, f, g, h]]
     //a = -g - e
@@ -435,6 +671,8 @@ let sprite = [
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentWalk.png?v=1594499006955",
     attack:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentShoot2.png?v=1594526056546",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentShoot2.png?v=1594526056546",
     hitBox: [[-99, 25,81,97],[18, 25, 81, 97]]
   },
   {
@@ -445,13 +683,39 @@ let sprite = [
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
     attack:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
     hitBox: [[-70, 59,10,5],[60, 59, 10, 5]]
+  },
+  {
+    //redprincess
+    stand:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FredWalk.png?v=1594587149260",
+    walk:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FredWalk.png?v=1594587149260",
+    attack:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FredFire.png?v=1594585825786",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fredshoot.png?v=1594584911893",
+    hitBox: [[-119, 2,102,124],[17, 2, 102, 124]] 
+  },
+  {
+  //trashcan
+    stand:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanwalk.png?v=1594589217594",
+    walk:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanwalk.png?v=1594589217594",
+    attack:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanshoot.png?v=1594589348929",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanshoot.png?v=1594589348929",
+    hitBox: [[-110,4,84,76],[25,4,84,76]] 
   }
 ];
 
 sprite.forEach((v, i) => {
   for (let keys in v) {
-    if (keys === "stand" || keys === "walk" || keys === "attack") {
+    if (typeof v[keys] === "string") {
       let href = v[keys];
       let img = new Image();
       img.src = href;
@@ -460,31 +724,146 @@ sprite.forEach((v, i) => {
   }
 });
 
-let mainChar = new Main(0, 100, 128, 128);
-mainChar.jumpTo(50, 50);
-
-let mob = new Mobs(1, 100, 128, 128);
-mob.jumpTo(800, 50);
-mob.speed = 2
-
 //render loop
 let interval = setInterval(loop, 1000 / fps);
+
+//initialize dialogue
+let dialogueController = new DialogueController();
+
+//staging
+let stage1 = new Stage((stage) => {
+  //stage start
+  //let mob = new Mobs(1, 100, 128, 128, stage);
+    let mob = new Mobs(3, 100, 128, 128, stage)
+  mob.jumpTo(800, 250);
+  mob.speed = 2;
+  //melee bot
+  mob.AI = {
+    // initial: [],
+    // repeat: ["toPlayer", "wait250", "attack", "wait1000"]
+    initial: ["facePlayer"],
+    repeat: ["toPlayerY","rangedAttack10", "wait100","facePlayer"]
+  }
+  render();
+  dialogueController.queue.push(new Dialogue("The prince in kingdom Green has been captured. Princess Green is on her mission to save the captured princess! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fpic.jpg?v=1594589935586", true));
+  dialogueController.queue.push(new Dialogue("Show me where the prince is! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.queue.push(new Dialogue("Beep! Unauthorized personnel! Keep OUT! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fturrentpic.png?v=1594586865187", true));
+  dialogueController.renderDialogue();
+}, (stage) => {
+  //stage end
+  dialogueController.onDialogueFinish = () => {
+    currentStage = stage2;
+    changeBackground();
+    stage2.startStage();
+  };
+  dialogueController.queue.push(new Dialogue("BOOM! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fturrentpic.png?v=1594586865187", true));
+  dialogueController.queue.push(new Dialogue("I am going forward! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+});
+
+let stage2 = new Stage((stage) => {
+  //stage start
+  cleanseProjectile();
+  mainChar.facingRight = 1;
+  mainChar.jumpTo(50, 250);
+  let mob = new Mobs(4, 100, 128, 128, stage);
+  mob.jumpTo(800, 250);
+  mob.speed = 2;
+  //range bot
+  mob.AI = {
+    initial: [],
+    repeat: ["toPlayerY", "facePlayer", "rangedAttack20", "toPlayerX"]
+  }
+  render();
+  dialogueController.queue.push(new Dialogue("Another mob? I am not afraid!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+}, (stage) => {
+  //stage end
+  dialogueController.onDialogueFinish = () => {
+    currentStage = stage3;
+    changeBackground();
+    stage3.startStage();
+  };
+  dialogueController.queue.push(new Dialogue("I'm going deeper (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+});
+
+let stage3 = new Stage((stage) => {
+  //stage start
+  cleanseProjectile();
+  mainChar.facingRight = 1;
+  mainChar.jumpTo(50, 250);
+  //2 range 3 melee
+  for (let i = 0; i < 3; i ++){
+    let mob = new Mobs(1, 200, 128, 128, stage);
+    mob.jumpTo(700, i * 150 + 50);
+    mob.speed = 2;
+    mob.AI ={
+      initial: ["toPlayerX"],
+      repeat: ["toPlayer", "wait250", "attack", "wait1000"]
+    }
+  }
+  for (let i = 0; i < 2; i ++){
+    let mob = new Mobs(4, 33, 128, 128, stage);
+    mob.jumpTo(900, i * 200 + 100);
+    mob.AI ={
+      initial: ["facePlayer"],
+      repeat: ["rangedAttack60", "wait1000"]
+    }
+  }
+  
+
+  
+  render();
+  dialogueController.queue.push(new Dialogue("That's a lot!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+}, (stage) => {
+  //stage end
+});
+
+
+let currentStage = stage1;
+stage1.startStage();
+
+let mainChar = new Main(0, 100, 128, 128);
+mainChar.jumpTo(50, 250);
+
+function cleanseProjectile(){
+  for (let i = 0; i < objectList.length; i ++) {
+    let object = objectList[i];
+    if (object.isProjectile){
+      object.destroySelf();
+      i --
+    }
+  }
+}
+
+loop();
 
 function loop(){
   handleKeys();
   handleMoveFrames();
-  mainChar.isCollide(mob);
   render();
 }
 
 function pause(){
   clearInterval(interval);
-  $("#UI").show();
 }
 
 function play(){
-  $("#UI").hide();
+  $("#pause").hide();
+  $("#resume").hide();
+  $("#restart").hide();
+  $("#quit").hide();
+  $("#gameOver").hide();
   interval = setInterval(loop, 1000 / fps);
+}
+
+function pauseUI(){
+  $("#pause").show();
+  $("#resume").show();
+  $("#restart").show();
+  $("#quit").show();
 }
 
 $("#resume").click(function(){
@@ -494,5 +873,28 @@ $("#resume").click(function(){
 $(document).keyup(function(e) {
   if (e.which === 27) {
     pause();
+    pauseUI();
   }
 });
+
+let backgroundImages = ["url(https://cdn.gamedevmarket.net/wp-content/uploads/20191203145249/4779a7547f510ddb98a89edda4df3c78.png)", 
+                       "url(https://cdn.gamedevmarket.net/wp-content/uploads/20191203145257/360a9179134324db09f345ef1c8f98b2-700x400.png)",
+                       "url(https://c4.wallpaperflare.com/wallpaper/865/102/489/video-games-nature-river-fantasy-art-wallpaper-preview.jpg)",
+                       "url(https://image.freepik.com/free-vector/medieval-castle-throne-room-ballroom-interior-with-knights-armor-both-sides-king_33099-892.jpg)",
+                       ];
+
+
+function changeBackground(){
+  if (currentStage === stage1){
+    c.style.backgroundImage = backgroundImages[0];
+  } else if (currentStage === stage2){
+    c.style.backgroundImage = backgroundImages[1];
+  } else if (currentStage === stage3){
+    c.style.backgroundImage = backgroundImages[2];
+  // } else if (currentStage === stage4){
+  //   c.style.backgroundImage = backgroundImages[3];
+  // }
+  }
+}
+
+changeBackground();

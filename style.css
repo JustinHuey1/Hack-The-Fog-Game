@@ -41,7 +41,7 @@
 #homeBody{
   background-image: url("https://i.imgur.com/CmRQMw8.jpg");
   background-repeat: no-repeat;
-  background-size: 100% 210%;
+  background-size: 100% auto;
 }
 
 a:link{
@@ -119,14 +119,21 @@ a:hover{
 }
 
 #canvasContainer{
-  border: solid 1px;
   display: inline-block;
+  margin-top: 2%;
+}
+
+#canvas{
+  border: solid 1px;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 #quit{
   background-color: green;
   color: white;
-  font-size: 200%;
+  font-size: 150%;
+  margin-top: 5%;
 }
 
 #quit:hover{
@@ -138,7 +145,7 @@ a:hover{
 #resume{
   background-color: green;
   color: white;
-  font-size: 200%;
+  font-size: 150%;
 }
 
 #resume:hover{
@@ -147,9 +154,46 @@ a:hover{
   cursor: pointer;
 }
 
+#restart{
+  background-color: green;
+  color: white;
+  font-size: 150%;
+  margin-top: 5%;
+}
+
+#restart:hover{
+  background-color: red;
+  color: blue;
+  cursor: pointer;
+}
+
+#pause{
+  text-decoration: underline;
+}
+
 #UI{
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
+  margin-right: 3%;
 }
+
+/*Game Dialogue  */
+.dialogueContainer{
+  border: solid;
+  position: relative;
+  display: flex;
+  z-index: 1000000;
+  background: chocolate;
+}
+
+.dialogueImg{
+  width: 128px;
+}
+
+.dialogueText{
+  flex-grow: 1;
+  border-left: solid
+}
+
 /* End */
 
