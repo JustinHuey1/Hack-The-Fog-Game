@@ -1,0 +1,152 @@
+/* Index Page (HOME)*/
+
+#gameTitle{
+  display: flex;
+  justify-content: center;
+  color: white;
+}
+
+.begin{
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-direction: column;
+}
+
+#start{
+  margin-top: 5%;
+  background-color: green;
+  color: white;
+  font-size: 200%;
+}
+
+#start:hover{
+  background-color: red;
+  color: blue;
+}
+
+#tutorial{
+  margin-top: 10%;
+  hight: 20%;
+  background-color: green;
+  color: white;
+  font-size: 200%;
+}
+
+#tutorial:hover{
+  background-color: red;
+  color: blue;
+}
+
+#homeBody{
+  background-image: url("https://i.imgur.com/CmRQMw8.jpg");
+  background-repeat: no-repeat;
+  background-size: 100% 210%;
+}
+
+a:link{
+  color: white;
+  text-decoration: none;
+}
+
+a:visited{
+  color: white;
+  text-decoration: none;
+}
+
+a:hover{
+  color: blue;
+}
+
+/* Tutorial */
+
+#tutorialBody{
+  background-image: url("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-1.2.1&w=1000&q=80");
+  background-repeat: no-repeat;
+  background-size: 100% 200%;
+}
+
+#tutorialControls{
+  display: flex;
+  justify-content: center;
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+#moving{
+  width: 20%;
+}
+
+#attacking{
+  width: 20%;
+  margin-right: 15%;
+}
+
+#tutorialPage{
+  width: 100%;
+  display: flex;
+}
+
+.placeholder{
+  width: 25%;
+}
+
+#updown{
+  width: 90%;
+  margin-top: 40%;
+}
+
+.titleCards{
+  font-size: 250%;
+  text-decoration: underline;
+}
+
+.instr{
+  font-size: 200%;
+}
+
+/* Game */
+
+#gameBody{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#canvasContainer{
+  border: solid 1px;
+  display: inline-block;
+  width: 50%;
+  margin-top: 7%;
+}
+
+#quit{
+  background-color: green;
+  color: white;
+  font-size: 200%;
+}
+
+#quit:hover{
+  background-color: red;
+  color: blue;
+  cursor: pointer;
+}
+
+#resume{
+  background-color: green;
+  color: white;
+  font-size: 200%;
+}
+
+#resume:hover{
+  background-color: red;
+  color: blue;
+  cursor: pointer;
+}
+
+#UI{
+  display: flex;
+  justify-content: space-around;
+}
+/* End */
+
