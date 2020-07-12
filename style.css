@@ -3,7 +3,7 @@
 #gameTitle{
   display: flex;
   justify-content: center;
-  color: white;
+  text-decoration: underline;  
 }
 
 .begin{
@@ -103,6 +103,11 @@ a:hover{
 
 .instr{
   font-size: 200%;
+}
+
+#sec{
+  position: absolute;
+  right: 11%;
 }
 
 /* Game */
