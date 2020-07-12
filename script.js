@@ -1,12 +1,12 @@
 let c = document.getElementById("canvas");
 let ctx = c.getContext("2d");
 let fps = 60;
-let width = 500;
-let height = 500;
+let width = 1024;
+let height = 512;
 c.width = width;
 c.height = height;
 
-let objectList = {};
+let objectList = [];
 let keyList = {};
 
 $("#UI").hide();
@@ -18,8 +18,10 @@ class Battler {
     this.y = 0;
     this.width = width;
     this.height = height;
+    this.damage = 10;
     this.speed = 5;
     this.hp = hp;
+    this.maxhp = hp;
     this.facingRight = 1;
     this.currentFrame = 0;
     this.hitBox = sprite[id].hitBox;
@@ -30,7 +32,7 @@ class Battler {
     this.walkAnimation = sprite[id].walk;
     this.attackAnimation = sprite[id].attack;
     //import
-    objectList[id] = this;
+    this.listIndex = objectList.push(this) - 1;
   }
 
   jumpTo(x, y) {
@@ -50,36 +52,57 @@ class Battler {
 
   isCollide(another) {
     //check x
-    if (this.facingRight === 1) {
-      if (this.x + this.hitBox[0][0] < another.x + another.hitBox[0][2] &&
-          this.x + this.hitBox[0][2] > another.x &&
-         this.y < another.y + another.hitBox[0][3] &&
-         this.y + this.hitBox[0][3] > another.y){
-        //check y
-          console.log("collide");
-          return true;
-      }else{
-        return false;
-      }
-    } else {
-      //facing left
-      if (this.x - 256 <= another.x && 
-          this.x >= another.x && 
-          this.y - 128 <= another.y && 
-          this.y + 128 >= another.y) {
-          console.log("collide");
-          return true;
-      }else{
-        return false
-      }
+    let rect1, rect2;
+    if (this.facingRight === 1){
+      rect1 = {x: this.x + this.hitBox[1][0], y: this.y + this.hitBox[1][1], width: this.hitBox[1][2], height: this.hitBox[1][3]}
+    }else{
+      rect1 = {x: this.x + this.hitBox[0][0], y: this.y + this.hitBox[0][1], width: this.hitBox[0][2], height: this.hitBox[0][3]}
     }
+    if (another.facingRight === 1){
+      rect2 = {x: another.x + another.hitBox[1][0], y: another.y + another.hitBox[1][1], width: another.hitBox[1][2], height: another.hitBox[1][3]}
+    }else{
+      rect2 = {x: another.x + another.hitBox[0][0], y: another.y + another.hitBox[0][1], width: another.hitBox[0][2], height: another.hitBox[0][3]}
+    }
+    
+    if (rect1.x < rect2.x + rect2.width &&
+     rect1.x + rect1.width > rect2.x &&
+     rect1.y < rect2.y + rect2.height &&
+     rect1.y + rect1.height > rect2.y){
+      //console.log("collide");
+      return true;
+    }else{
+      return false;
+    }
+  }
+  
+  gainHp(value){
+    this.hp += value;
+    if (this.hp <= 0){
+      this.destroySelf();
+    }
+  }
+  
+  destroySelf(){
+    objectList[this.listIndex] = undefined;
   }
 }
 
 class Projectile extends Battler {
-  constructor(id, hp, width, height) {
-    //import
-    objectList[id] = this;
+  constructor(id, hp, width, height, speed, dir, damage) {
+    super(id,hp,width,height)
+    this.speed = speed;
+    this.facingRight = dir;
+    this.damage = damage;
+    this.isProjectile = true;
+  }
+  
+  behavior(){
+    if (this.facingRight){
+      this.jumpTo(this.x + this.speed, this.y);
+    }else{
+      this.jumpTo(this.x - this.speed, this.y);
+    }
+    this.gainHp(-1);
   }
 }
 
@@ -96,13 +119,17 @@ class Mobs extends Battler {
     this.isMainChar = false;
     this.AI = {
       initial: ["toPlayer"],
-      repeat: ["attack", "toPlayer"]
+      repeat: ["attack", "wait1000", "toPlayer", "wait250"]
     };
     this.act;
   }
   
   onAttack(){
     //fill whatever
+    //damage player if colliding
+    if (this.isCollide(mainChar)){
+      mainChar.gainHp(-this.damage);
+    }
   }
 
   behavior() {
@@ -137,13 +164,27 @@ class Mobs extends Battler {
             this.jumpTo(this.x, this.y - this.speed);
           }
         }
+        return;
       }
       if (this.act === "attack"){
         if (this.currentAction !== "attack"){
           this.changeAction("attack");
+          this.onAttack();
+        }
+        return;
+      }
+      if (this.act.includes("wait")){
+        this.changeAction("stand");
+        if (this.selfTimer !== undefined){
+          this.selfTimer += 1000/fps;
+        }else{
+          this.selfTimer = 0;
+        }
+        if (this.selfTimer >= parseInt(this.act.substring(4)) ){//1000 can be set to something else
+          this.resolveAct(this.act);
+          this.selfTimer = undefined;
         }
       }
-      //resolve act
       
     } else {
       //no act
@@ -167,12 +208,43 @@ class Mobs extends Battler {
   }
 }
 
+class DialogueController{
+  constructor(){
+    this.queue = [];
+    this.showingDialogue = false;
+  }
+  
+  renderDialogue(){
+    
+  }
+  
+  resolveDialogue(){
+    this.queue.shift();
+    if (this.queue.length > 0){
+      this.renderDialogue();
+    }
+  }
+}
+
+class Dialogue{
+  constructor(text, img, isTop){
+    this.text = text;
+    let image = new Image();
+    image.src = img;
+    this.img = image;
+    this.isTop = isTop;
+  }
+}
+
 //handling functions
 function render() {
   //empty
   ctx.clearRect(0, 0, width, height);
   //render
   for (let key in objectList) {
+    if (!objectList[key]){
+      continue;
+    }
     let object = objectList[key];
     let objectX = object.x;
     let objectY = object.y;
@@ -197,11 +269,24 @@ function render() {
         oHeight
       );
 
+      let facing = object.facingRight
+      
       ctx.restore();
       ctx.beginPath();
       ctx.strokeStyle = "red";
-      ctx.rect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1], object.hitBox[0][2], object.hitBox[0][3]);//change to hitbox
+      //hitbox rect
+      ctx.rect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1], object.hitBox[0][2], object.hitBox[0][3]);
       ctx.stroke();
+      if (!object.isProjectile){
+        //hpbar border
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.rect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1] - 20, object.hitBox[0][2], 10);
+        ctx.stroke();
+        //hpbar inner
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1] - 20, object.hitBox[0][2] * (object.hp / object.maxhp), 10);
+      }
     } else {
       ctx.drawImage(
         object[`${object.currentAction}Animation`],
@@ -214,11 +299,21 @@ function render() {
         oWidth,
         oHeight
       );    
-      
       ctx.beginPath();
       ctx.strokeStyle = "red";
-      ctx.rect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1], object.hitBox[1][2], object.hitBox[1][3]);//change to hitbox
+      //hitbox rect
+      ctx.rect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1], object.hitBox[1][2], object.hitBox[1][3]);
       ctx.stroke();
+      if (!object.isProjectile){
+        //hpbar border
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.rect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1] - 20, object.hitBox[1][2], 10);
+        ctx.stroke();
+        //hpbar inner
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1] - 20, object.hitBox[1][2] * (object.hp / object.maxhp), 10);
+      }
     }
   }
 }
@@ -252,6 +347,9 @@ function handleKeys() {
   if (keyList["j"]) {
     if (mainChar.currentAction !== "attack") {
       mainChar.changeAction("attack");
+      let bullet = new Projectile(2,25,128,128, 10, mainChar.facingRight, mainChar.damage)
+      bullet.jumpTo(mainChar.x + mainChar.hitBox[mainChar.facingRight][0], mainChar.y+10)
+      
     }
   }
   if (mainChar.currentAction !== "attack") {
@@ -267,6 +365,9 @@ function handleKeys() {
 
 function handleMoveFrames() {
   for (let key in objectList) {
+    if (!objectList[key]){
+      continue;
+    }
     let object = objectList[key];
     object.currentFrame += 1;
     if (object.currentFrame >= object.totalFrame) {
@@ -281,8 +382,19 @@ function handleMoveFrames() {
       }
     }
     if (object.behavior) {
-      //object.behavior();
+      object.behavior();
     }
+    
+    
+    if(object.id === 2){
+      objectList.forEach((v,i)=>{
+        if(v !== undefined && v.id === 1 && object.isCollide(v)){
+          v.gainHp(-object.damage);
+          object.gainHp(-233);
+        }
+      })
+    }
+    
   }
 }
 
@@ -322,8 +434,18 @@ let sprite = [
     walk:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentWalk.png?v=1594499006955",
     attack:
-      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentShoot.png?v=1594499885384",
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentShoot2.png?v=1594526056546",
     hitBox: [[-99, 25,81,97],[18, 25, 81, 97]]
+  },
+  {
+    //bullet
+    stand:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
+    walk:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
+    attack:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
+    hitBox: [[-70, 59,10,5],[60, 59, 10, 5]]
   }
 ];
 
@@ -338,20 +460,22 @@ sprite.forEach((v, i) => {
   }
 });
 
-let mainChar = new Main(0, 1, 128, 128);
+let mainChar = new Main(0, 100, 128, 128);
 mainChar.jumpTo(50, 50);
 
-let mob = new Mobs(1, 10, 128, 128);
-mob.jumpTo(120, 120);
+let mob = new Mobs(1, 100, 128, 128);
+mob.jumpTo(800, 50);
 mob.speed = 2
 
 //render loop
-let interval = setInterval(() => {
+let interval = setInterval(loop, 1000 / fps);
+
+function loop(){
   handleKeys();
   handleMoveFrames();
   mainChar.isCollide(mob);
   render();
-}, 1000 / fps);
+}
 
 function pause(){
   clearInterval(interval);
@@ -360,12 +484,7 @@ function pause(){
 
 function play(){
   $("#UI").hide();
-  interval = setInterval(() => {
-    handleKeys();
-    handleMoveFrames();
-    mainChar.isCollide(mob);
-    render();
-  }, 1000 / fps);
+  interval = setInterval(loop, 1000 / fps);
 }
 
 $("#resume").click(function(){
