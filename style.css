@@ -41,7 +41,7 @@
 #homeBody{
   background-image: url("https://i.imgur.com/CmRQMw8.jpg");
   background-repeat: no-repeat;
-  background-size: 100% 210%;
+  background-size: 100% auto;
 }
 
 a:link{
@@ -93,7 +93,7 @@ a:hover{
 
 #updown{
   width: 90%;
-  margin-top: 40%;
+  margin-top: 30%;
 }
 
 .titleCards{
@@ -119,14 +119,21 @@ a:hover{
 }
 
 #canvasContainer{
-  border: solid 1px;
   display: inline-block;
+  margin-top: 4%;
+}
+
+#canvas{
+  border: solid 1px;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 #quit{
   background-color: green;
   color: white;
-  font-size: 200%;
+  font-size: 150%;
+  margin-top: 5%;
 }
 
 #quit:hover{
@@ -138,7 +145,7 @@ a:hover{
 #resume{
   background-color: green;
   color: white;
-  font-size: 200%;
+  font-size: 150%;
 }
 
 #resume:hover{
@@ -147,9 +154,93 @@ a:hover{
   cursor: pointer;
 }
 
+#restart{
+  background-color: green;
+  color: white;
+  font-size: 150%;
+  margin-top: 5%;
+}
+
+#restart:hover{
+  background-color: red;
+  color: blue;
+  cursor: pointer;
+}
+
+.restartHard{
+  background-color: red;
+  color: white;
+  font-size: 150%;
+  margin-top: 5%;
+}
+.restartHard:hover{
+  background-color: black;
+  color: blue;
+  cursor: pointer;
+}
+
+#pause{
+  text-decoration: underline;
+}
+
+#gameOver{
+  text-decoration: underline;
+}
+
+#gTitle{
+  position: absolute;
+  top: -1%;
+  background-color: #08AEEA;
+  background-image: linear-gradient(0deg, #08AEEA 0%, #2AF598 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#door{
+  position: absolute;
+  right: 12%;
+  top: 30%;
+  height: 25%;
+  width: 15%;
+}
+
+#clickDoor{
+  position: absolute;
+  right: 15%;
+  top: 40%;
+}
+
 #UI{
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
+  margin-right: 3%;
 }
+
+/*Game Dialogue  */
+.dialogueContainer{
+  border: solid;
+  position: relative;
+  display: flex;
+  z-index: 1000000;
+  background: chocolate;
+}
+
+.dialogueImg{
+  width: 128px;
+}
+
+.dialogueText{
+  flex-grow: 1;
+  border-left: solid
+}
+
 /* End */
 
+#endingBody{
+  background-image: url("https://static1.fjcdn.com/comments/Id+have+her+not+wear+panties+too+if+i+could+_e3d64985fe039d494fe08dc1904567d5.png"), url("http://pixelartmaker.com/art/5b394971fa35655.png");
+  background-repeat: no-repeat;
+}
+
+.home{
+  position: absolute;
+}
