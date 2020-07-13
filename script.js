@@ -9,6 +9,8 @@ c.height = height;
 let objectList = [];
 let keyList = {};
 let ShowHitBox = false
+
+let game = true;
 // UI for pause
 $("#pause").hide();
 $("#restart").hide();
@@ -1057,9 +1059,13 @@ $("#resume").click(function(){
 });
                    
 $(document).keyup(function(e) {
-  if (e.which === 27) {
+  if (e.which === 27 && game === true) {
     pause();
     pauseUI();
+    game = false;
+  } else if (e.which === 27 && game === false) {
+    play();
+    game = true;
   }
 });
 
