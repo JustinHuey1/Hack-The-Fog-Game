@@ -328,7 +328,7 @@ class Mobs extends Battler {
               repeat: ["toPlayerY", "facePlayer", "rangedAttack20", "toPlayer"]
             }
           }else{
-            let mob = new Mobs(1, 100, 128, 128, this.stage);
+            let mob = new Mobs(1, 75, 128, 128, this.stage);
             mob.jumpTo(this.x, this.y);
             mob.speed = 2;
             //range bot
@@ -984,6 +984,13 @@ let stage6 = new Stage((stage) => {
   cleanseProjectile();
 })
 
+let infiniteStage = new Stage((stage) => {
+  
+}, (stage) => {
+  //on stage end repeat spawn
+  
+});
+
 let currentStage;
 
 
@@ -999,18 +1006,29 @@ function cleanseProjectile(){
   }
 }
 
-function initGame(isHard){
+function initGame(isHard, isInfinite){
   if (currentStage){
     currentStage.enemyList = [];
   }
-  objectList = [];
-  currentStage = stage1;
-  stage1.startStage();
-  mainChar = new Main(0, 100, 128, 128);
-  mainChar.jumpTo(50, 250);
-  changeBackground();
-  if (isHard){
-    mainChar.hp = 1;
+  pause();
+  if (!isInfinite){
+    objectList = [];
+    currentStage = stage1;
+    stage1.startStage();
+    mainChar = new Main(0, 100, 128, 128);
+    mainChar.jumpTo(50, 250);
+    changeBackground();
+    if (isHard){
+      mainChar.hp = 1;
+    }
+  }else{
+    if (mainChar.hp <= 0){
+      mainChar.hp = mainChar.maxhp;
+    }
+    objectList = [mainChar];
+    currentStage = infiniteStage;
+    infiniteStage.startStage();
+    mainChar.jumpTo(50, 250);
   }
   render();
 }
@@ -1030,6 +1048,7 @@ function play(){
   $("#resume").hide();
   $("#restart").hide();
   $(".restartHard").hide();
+  $(".infiniteMode").hide();
   $("#quit").hide();
   $("#gameOver").hide();
   interval = setInterval(loop, 1000 / fps);
@@ -1040,6 +1059,7 @@ function pauseUI(){
   $("#resume").show();
   $("#restart").show();
   $(".restartHard").show();
+  $(".infiniteMode").show();
   $("#quit").show();
 }
 
@@ -1053,6 +1073,22 @@ $("#restart").click(function(){
                     
 $(".restartHard").click(function(){
   initGame(true);
+  $("#pause").hide();
+  $("#resume").hide();
+  $("#restart").hide();
+  $(".restartHard").hide();
+  $("#quit").hide();
+  $("#gameOver").hide();
+});
+
+$(".infiniteMode").click(function(){
+  initGame(true, true);
+  $("#pause").hide();
+  $("#resume").hide();
+  $("#restart").hide();
+  $(".restartHard").hide();
+  $("#quit").hide();
+  $("#gameOver").hide();
 });
 
 $("#resume").click(function(){
