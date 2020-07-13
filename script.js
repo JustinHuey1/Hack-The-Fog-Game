@@ -8,14 +8,17 @@ c.height = height;
 
 let objectList = [];
 let keyList = {};
-
+let ShowHitBox = false
 // UI for pause
 $("#pause").hide();
 $("#restart").hide();
+$(".restartHard").hide();
 $("#resume").hide();
 $("#quit").hide();
 
 $("#gameOver").hide();
+$("#door").hide();
+$("#clickDoor").hide();
 
 //constructors
 class Battler {
@@ -130,6 +133,7 @@ class Battler {
       if (this === mainChar){
         $("#gameOver").show();
         $("#restart").show();
+        $(".restartHard").show();
         $("#quit").show();
         pause();
       }
@@ -141,7 +145,7 @@ class Battler {
       if(this.hp/this.maxhp < this.newAI.threshold) {
         this.AI.initial = this.newAI.AI[0]
         this.AI.repeat = this.newAI.AI[1]
-        this.changeAI = false
+        //this.changeAI = false
       }
     }
   }
@@ -155,6 +159,11 @@ class Battler {
     }
     if (this.stage){
       this.stage.removeEnemy(this);
+    }
+    if (this.isPrince){
+      dialogueController.queue.push(new Dialogue("I'm free cy@", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince.png?v=1594593855915", true));
+      dialogueController.queue.push(new Dialogue("I'm mad now! I will defeat you first then capture the prince back!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", true));
+      dialogueController.renderDialogue();
     }
   }
 }
@@ -192,7 +201,7 @@ class Mobs extends Battler {
     this.isMainChar = false;
     this.AI = {
       initial: ["toPlayerY", "facePlayer"],
-      repeat: ["rangedAttack10", "wait1000", "toPlayer", "wait250", "toPlayerY", "facePlayer"]
+      repeat: ["rangedAttack10", "wait1000", "toPlayer", "wait250", "toPlayerY", "facePlayer","heal"]
     };
     this.count = 0;
     this.act;
@@ -305,6 +314,31 @@ class Mobs extends Battler {
         }
         return;
       }
+      if (this.act === "summon"){
+        if (objectList[2].isPrince){
+          if (randomInt(0, 2) === 0){
+            let mob = new Mobs(4, 50, 128, 128, this.stage);
+            mob.jumpTo(this.x, this.y);
+            mob.speed = 3;
+            //range bot
+            mob.AI = {
+              initial: [],
+              repeat: ["toPlayerY", "facePlayer", "rangedAttack20", "toPlayer"]
+            }
+          }else{
+            let mob = new Mobs(1, 100, 128, 128, this.stage);
+            mob.jumpTo(this.x, this.y);
+            mob.speed = 2;
+            //range bot
+            mob.AI = {
+              initial: [],
+              repeat: ["toPlayer", "wait250", "attack", "wait1000"]
+            }
+          }
+        }
+        this.resolveAct(this.act);
+        return;
+      }
       if(this.act.includes("rangedAttack")){
         if (this.currentAction !== "attack2"){
           this.changeAction("attack2");
@@ -318,6 +352,16 @@ class Mobs extends Battler {
         if (this.count >= repeatTimes){
           this.count = 0;
           this.resolveAct(this.act);
+        }
+        return;
+      }
+      
+      if(this.act.includes("heal")){
+        if(!isNaN(parseInt(this.act.substring(4)))){
+          this.gainHp(parseInt(this.act.substring(4)))
+        }
+        if(this.hp > this.maxhp){
+          this.hp = this.maxhp
         }
         return;
       }
@@ -359,11 +403,17 @@ class Mobs extends Battler {
 
 class Boss extends Mobs{
   constructor(id, hp, width, height, stage) {
-    super(id, hp, width, height);
+    super(id, hp, width, height, stage);
     this.changeAI = true
     this.newAI = {}
     this.newAI.threshold
     this.newAI.AI
+  }
+  
+  gainHp(hp){
+    if (!objectList[2].isPrince){
+      super.gainHp(hp);
+    }
   }
 }
 
@@ -508,7 +558,9 @@ function render() {
       ctx.beginPath();
       ctx.strokeStyle = "red";
       //hitbox rect
-      ctx.rect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1], object.hitBox[0][2], object.hitBox[0][3]);
+      if(ShowHitBox){
+        ctx.rect(objectX+object.hitBox[0][0], objectY+object.hitBox[0][1], object.hitBox[0][2], object.hitBox[0][3]);
+      }
       ctx.stroke();
       if (!object.isProjectile){
         //hpbar border
@@ -535,7 +587,9 @@ function render() {
       ctx.beginPath();
       ctx.strokeStyle = "red";
       //hitbox rect
-      ctx.rect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1], object.hitBox[1][2], object.hitBox[1][3]);
+      if(ShowHitBox){
+        ctx.rect(objectX+object.hitBox[1][0], objectY+object.hitBox[1][1], object.hitBox[1][2], object.hitBox[1][3]);
+      }
       ctx.stroke();
       if (!object.isProjectile){
         //hpbar border
@@ -624,7 +678,7 @@ function handleMoveFrames() {
       if(object.isFriendly){
         objectList.forEach((v,i)=>{
           if(v !== undefined && object.isCollide(v)){
-            if(v.id === 1 || v.id === 3 || v.id === 4){ //check id to see if is enemy
+            if(v.id === 1 || v.id === 3 || v.id === 4 || v.id === 5){ //check id to see if is enemy
               v.gainHp(-object.damage);
               object.gainHp(-2333); //kills bullet
               return;
@@ -659,7 +713,7 @@ let sprite = [
   // },
 
   {
-    //guy
+    //guy 0
     stand:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyWalk.png?v=1594501701844",
     walk:
@@ -676,7 +730,7 @@ let sprite = [
   },
 
   {
-    //turrent
+    //turrent 1
     stand:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FturrentWalk.png?v=1594499006955",
     walk:
@@ -688,7 +742,7 @@ let sprite = [
     hitBox: [[-99, 25,81,97],[18, 25, 81, 97]]
   },
   {
-    //bullet
+    //bullet 2
     stand:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FguyBullet.png?v=1594510138936",
     walk:
@@ -700,7 +754,7 @@ let sprite = [
     hitBox: [[-70, 59,10,5],[60, 59, 10, 5]]
   },
   {
-    //redprincess
+    //redprincess 3
     stand:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2FredWalk.png?v=1594587149260",
     walk:
@@ -712,7 +766,7 @@ let sprite = [
     hitBox: [[-119, 2,102,124],[17, 2, 102, 124]] 
   },
   {
-  //trashcan
+  //trashcan 4
     stand:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanwalk.png?v=1594589217594",
     walk:
@@ -722,6 +776,18 @@ let sprite = [
     attack2:
       "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Ftrashcanshoot.png?v=1594589348929",
     hitBox: [[-110,4,84,76],[25,4,84,76]] 
+  },
+  {
+  //prince 5
+    stand:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince2.png?v=1594602266899",
+    walk:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince2.png?v=1594602266899",
+    attack:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince2.png?v=1594602266899",
+    attack2:
+      "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince2.png?v=1594602266899",
+    hitBox: [[-105,6,100,110],[5,6,100,110]] 
   }
 ];
 
@@ -754,7 +820,7 @@ let stage1 = new Stage((stage) => {
     repeat: ["toPlayer", "wait250", "attack", "wait1000"]
   }
   render();
-  dialogueController.queue.push(new Dialogue("The prince in kingdom Green has been captured. Princess Green is on her mission to save the captured princess! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fpic.jpg?v=1594589935586", true));
+  dialogueController.queue.push(new Dialogue("Once upon a time the prince in kingdom Green has been captured. Princess Green is on her mission to save the captured prince! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fpic.jpg?v=1594589935586", true));
   dialogueController.queue.push(new Dialogue("Show me where the prince is! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
   dialogueController.queue.push(new Dialogue("Beep! Unauthorized personnel! Keep OUT! (Press any button to conintue)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fturrentpic.png?v=1594586865187", true));
   dialogueController.renderDialogue();
@@ -840,7 +906,7 @@ let stage4 = new Stage((stage) => {
   mainChar.facingRight = 1;
   mainChar.jumpTo(496, 200);
   for (let i = 0; i < 8; i ++){
-    let mob = new Mobs(1, 33, 128, 128, stage);
+    let mob = new Mobs(1, 50, 128, 128, stage);
     mob.speed = 4;
     mob.AI ={
       initial: [],
@@ -862,7 +928,7 @@ let stage4 = new Stage((stage) => {
     changeBackground();
     stage5.startStage();
   };
-  dialogueController.queue.push(new Dialogue("I think it's the end next!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.queue.push(new Dialogue("I see the red palace, I am sure the prince is inside.", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
   dialogueController.renderDialogue();
 });
 
@@ -872,35 +938,53 @@ let stage5 = new Stage((stage) => {
   mainChar.facingRight = 1;
   mainChar.jumpTo(50, 200);
   let mob = new Boss(3, 1000, 128, 128, stage)
-  mob.newAI = {threshold:0.50, AI:[["facePlayer"],["toPlayer", "wait150", "attack", "rangedAttack5"]]}
+  mob.newAI = {threshold:0.50, AI:[["facePlayer"],["toPlayer", "wait150", "attack", "wait150", "rangedAttack5"]]}
   mob.jumpTo(800, 250);
   mob.speed = 5;
-  //melee bot
   mob.AI = {
     // initial: [],
     // repeat: ["toPlayer", "wait250", "attack", "wait1000"]
     initial: ["facePlayer"],
-    repeat: ["toPlayerY","rangedAttack10", "wait100","facePlayer"]
+    repeat: ["toPlayerY", "rangedAttack10", "wait100","facePlayer", "summon", "toPlayerY", "rangedAttack10", "wait100","facePlayer"]
   }
+  //prince
+  let prince = new Mobs(5, 500, 128, 128, stage);
+  prince.jumpTo(500, 380);
+  prince.AI = {
+    initial: [],
+    repeat: []
+  }
+  prince.isPrince = true;
+  prince.changeAction("walk")
   render();
-  dialogueController.queue.push(new Dialogue("I am surrounded!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", false));
+  dialogueController.queue.push(new Dialogue("How did you get pass all those guards? Doesn't matter, I will stop you right here.", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", true));
+  dialogueController.queue.push(new Dialogue("Free the prince! Princess Red!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.queue.push(new Dialogue("......", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fprince.png?v=1594593855915", true));
+  dialogueController.queue.push(new Dialogue("Princess Green, you fool! Look around you, everything here is powered by the prince. Without the prince, the people in kingdom Red will die!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", true));
+  dialogueController.queue.push(new Dialogue("You can find alternatives for power", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.queue.push(new Dialogue("Like what?", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", true));
+  dialogueController.queue.push(new Dialogue("Love, something more powerful than any fuel we had ever used before.", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.queue.push(new Dialogue("That's impossible! We can't transition to love in a few days! We have to have the prince! Enough Talking, let's fight!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fred2.png?v=1594600316442", true));
+  dialogueController.queue.push(new Dialogue("(Princess Red is powered by the prince, I should try to free the prince first.)", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
   dialogueController.renderDialogue();
 }, (stage) => {
-  currentStage = stage6;
-  changeBackground();
   //stage end
-  
+  dialogueController.onDialogueFinish = () => {
+    currentStage = stage6;
+    changeBackground();
+  };
+  dialogueController.queue.push(new Dialogue("Mission Accomplished", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
 });
 
 let stage6 = new Stage((stage) => {
-    cleanseProjectile();
+  cleanseProjectile();
 })
 
-let currentStage = stage1;
-stage1.startStage();
+let currentStage;
 
-let mainChar = new Main(0, 100, 128, 128);
-mainChar.jumpTo(50, 250);
+
+let mainChar;
 
 function cleanseProjectile(){
   for (let i = 0; i < objectList.length; i ++) {
@@ -912,7 +996,21 @@ function cleanseProjectile(){
   }
 }
 
-loop();
+function initGame(isHard){
+  if (currentStage){
+    currentStage.enemyList = [];
+  }
+  objectList = [];
+  currentStage = stage1;
+  stage1.startStage();
+  mainChar = new Main(0, 100, 128, 128);
+  mainChar.jumpTo(50, 250);
+  changeBackground();
+  if (isHard){
+    mainChar.hp = 1;
+  }
+  render();
+}
 
 function loop(){
   handleKeys();
@@ -928,6 +1026,7 @@ function play(){
   $("#pause").hide();
   $("#resume").hide();
   $("#restart").hide();
+  $(".restartHard").hide();
   $("#quit").hide();
   $("#gameOver").hide();
   interval = setInterval(loop, 1000 / fps);
@@ -937,12 +1036,21 @@ function pauseUI(){
   $("#pause").show();
   $("#resume").show();
   $("#restart").show();
+  $(".restartHard").show();
   $("#quit").show();
 }
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min) ) + min;
 }
+
+$("#restart").click(function(){
+  initGame();
+});
+                    
+$(".restartHard").click(function(){
+  initGame(true);
+});
 
 $("#resume").click(function(){
   play();
@@ -963,7 +1071,6 @@ let backgroundImages = ["url(https://cdn.gamedevmarket.net/wp-content/uploads/20
                         "url(https://i.imgur.com/o9C8FmJ.jpg)",
                        ];
 
-
 function changeBackground(){
   if (currentStage === stage1){
     c.style.backgroundImage = backgroundImages[0];
@@ -977,7 +1084,11 @@ function changeBackground(){
     c.style.backgroundImage = backgroundImages[4];
   } else if (currentStage === stage6){
     c.style.backgroundImage = backgroundImages[5];
+    $("#door").show();
+    $("#clickDoor").show();
   }
 }
 
 changeBackground();
+
+initGame();

@@ -167,6 +167,18 @@ a:hover{
   cursor: pointer;
 }
 
+.restartHard{
+  background-color: red;
+  color: white;
+  font-size: 150%;
+  margin-top: 5%;
+}
+.restartHard:hover{
+  background-color: black;
+  color: blue;
+  cursor: pointer;
+}
+
 #pause{
   text-decoration: underline;
 }
@@ -182,6 +194,20 @@ a:hover{
   background-image: linear-gradient(0deg, #08AEEA 0%, #2AF598 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+#door{
+  position: absolute;
+  right: 12%;
+  top: 30%;
+  height: 25%;
+  width: 15%;
+}
+
+#clickDoor{
+  position: absolute;
+  right: 15%;
+  top: 40%;
 }
 
 #UI{
@@ -210,3 +236,11 @@ a:hover{
 
 /* End */
 
+#endingBody{
+  background-image: url("https://static1.fjcdn.com/comments/Id+have+her+not+wear+panties+too+if+i+could+_e3d64985fe039d494fe08dc1904567d5.png"), url("http://pixelartmaker.com/art/5b394971fa35655.png");
+  background-repeat: no-repeat;
+}
+
+.home{
+  position: absolute;
+}
