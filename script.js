@@ -9,6 +9,8 @@ c.height = height;
 let objectList = [];
 let keyList = {};
 let ShowHitBox = false
+
+let game = true;
 // UI for pause
 $("#pause").hide();
 $("#restart").hide();
@@ -334,6 +336,7 @@ class Mobs extends Battler {
               initial: [],
               repeat: ["toPlayer", "wait250", "attack", "wait1000"]
             }
+            mob.damage = 5
           }
         }
         this.resolveAct(this.act);
@@ -1057,9 +1060,13 @@ $("#resume").click(function(){
 });
                    
 $(document).keyup(function(e) {
-  if (e.which === 27) {
+  if (e.which === 27 && game === true) {
     pause();
     pauseUI();
+    game = false;
+  } else if (e.which === 27 && game === false) {
+    play();
+    game = true;
   }
 });
 
