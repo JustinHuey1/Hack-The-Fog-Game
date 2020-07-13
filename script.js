@@ -986,12 +986,48 @@ let stage6 = new Stage((stage) => {
 })
 
 let infiniteStage = new Stage((stage) => {
-  
+  let mob = new Mobs(1, 1, 128, 128, stage);
 }, (stage) => {
   //on stage end repeat spawn
+  cleanseProjectile();
   console.log(`Level ${stage.loop}`);
-  let mobCount = randomInt(0, stage.loop);
+  dialogueController.queue.push(new Dialogue(`You are currently at loop ${stage.loop}! Good Luck~`, "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2Fpic.jpg?v=1594589935586", true));
+  dialogueController.renderDialogue();
+  c.style.backgroundImage = backgroundImages[randomInt(0, backgroundImages.length)];
   
+  stage.loop += 1;
+  mainChar.jumpTo(50, 200);
+  let mobCount = randomInt(0, stage.loop / 3);
+  if (mobCount > 10){
+    mobCount = 10;
+  }else if (mobCount <= 0){
+    mobCount = 1;
+  }
+  let possibleID = [1, 3, 4, 5];
+  let possibleAI = ["heal", "attack", "rangedAttack"];
+  for (let i = 0; i < mobCount; i ++){
+    let id = possibleID[randomInt(0, possibleID.length)];
+    let mob = new Mobs(id, randomInt(25, stage.loop * 20), 128, 128, stage);
+    mob.speed = randomInt(1, randomInt(0.1, stage.loop + 1));
+    if (mob.speed > 7){
+      mob.speed = 7;
+    }
+    mob.AI = {
+      initial: [],
+      repeat: []
+    }
+    let initialAICount = randomInt(0, stage.loop);
+    let repeatAICount = randomInt(0, Math.floor(stage.loop / 2));
+    for (let j = 0; j < initialAICount; j ++){
+      let ai = possibleAI[randomInt(0, possibleAI.length)];
+      if (ai)
+      //mob.AI.initial.push();
+    }
+    for (let k = 0; k < initialAICount; k ++){
+      mob.AI.repeat.push(possibleAI[randomInt(0, possibleAI.length)]);
+    }
+    mob.jumpTo(randomInt(width / 2, width), randomInt(0, height));
+  }
 });
 
 let currentStage;
@@ -1047,6 +1083,7 @@ function loop(){
 
 function pause(){
   clearInterval(interval);
+  interval = undefined;
 }
 
 function play(){
@@ -1057,7 +1094,9 @@ function play(){
   $(".infiniteMode").hide();
   $("#quit").hide();
   $("#gameOver").hide();
-  interval = setInterval(loop, 1000 / fps);
+  if (interval === undefined){
+    interval = setInterval(loop, 1000 / fps);
+  }
 }
 
 function pauseUI(){
@@ -1100,6 +1139,7 @@ $(".infiniteMode").click(function(){
 });
 
 $("#resume").click(function(){
+  game = true
   play();
 });
                    
