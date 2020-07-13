@@ -135,6 +135,15 @@ class Battler {
       }
       this.destroySelf();
     }
+    
+    if(this.changeAI === true){
+      //console.log(this.hp/this.maxhp, this.newAI.threshold, this.hp/this.maxhp < this.newAI.threshold)
+      if(this.hp/this.maxhp < this.newAI.threshold) {
+        this.AI.initial = this.newAI.AI[0]
+        this.AI.repeat = this.newAI.AI[1]
+        this.changeAI = false
+      }
+    }
   }
   
   destroySelf(){
@@ -268,7 +277,7 @@ class Mobs extends Battler {
         return;
       }
       if (this.act === "toPlayerY"){
-        if (this.y - mainChar.y <= this.hitBox[0][3] && this.y + this.hitBox[0][3] >= mainChar.y){
+        if (this.y - mainChar.y <= this.hitBox[0][3] / 4 && this.y + (this.hitBox[0][3] / 4) >= mainChar.y){
           this.resolveAct("toPlayerY");
           
         }else{
@@ -352,6 +361,9 @@ class Boss extends Mobs{
   constructor(id, hp, width, height, stage) {
     super(id, hp, width, height);
     this.changeAI = true
+    this.newAI = {}
+    this.newAI.threshold
+    this.newAI.AI
   }
 }
 
@@ -734,7 +746,8 @@ let dialogueController = new DialogueController();
 let stage1 = new Stage((stage) => {
   //stage start
   //let mob = new Mobs(1, 100, 128, 128, stage);
-    let mob = new Mobs(3, 100, 128, 128, stage)
+    let mob = new Boss(3, 1000, 128, 128, stage)
+    mob.newAI = {threshold:0.50, AI:[["facePlayer"],["toPlayer","attack"]]}
   mob.jumpTo(800, 250);
   mob.speed = 2;
   //melee bot
@@ -811,14 +824,44 @@ let stage3 = new Stage((stage) => {
       repeat: ["rangedAttack60", "wait1000"]
     }
   }
-  
-
-  
   render();
   dialogueController.queue.push(new Dialogue("That's a lot!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
   dialogueController.renderDialogue();
 }, (stage) => {
   //stage end
+  dialogueController.onDialogueFinish = () => {
+    currentStage = stage4;
+    changeBackground();
+    stage4.startStage();
+  };
+  dialogueController.queue.push(new Dialogue("It suddenly becomes silent.", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+});
+
+let stage4 = new Stage((stage) => {
+  //stage start
+  cleanseProjectile();
+  mainChar.facingRight = 1;
+  mainChar.jumpTo(496, 200);
+  for (let i = 0; i < 8; i ++){
+    let mob = new Mobs(1, 33, 128, 128, stage);
+    mob.speed = 4;
+    mob.AI ={
+      initial: [],
+      repeat: ["toPlayer", "wait"+randomInt(250, 1000), "attack", "wait"+randomInt(0, 750)]
+    }
+    if (i < 4){
+      mob.jumpTo(50, i * 135 + 25);
+    }else{
+      mob.jumpTo(850, (i - 4) * 135 + 25);
+    }
+  }
+  render();
+  dialogueController.queue.push(new Dialogue("I am surrounded!", "https://cdn.glitch.com/2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e%2F2d713a23-b2e0-4a6b-9d5c-61c597ba6d8e_guyWalk.png?v=1594584060708", false));
+  dialogueController.renderDialogue();
+}, (stage) => {
+  //stage end
+  
 });
 
 
@@ -866,6 +909,10 @@ function pauseUI(){
   $("#quit").show();
 }
 
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
+
 $("#resume").click(function(){
   play();
 });
@@ -880,6 +927,7 @@ $(document).keyup(function(e) {
 let backgroundImages = ["url(https://cdn.gamedevmarket.net/wp-content/uploads/20191203145249/4779a7547f510ddb98a89edda4df3c78.png)", 
                        "url(https://cdn.gamedevmarket.net/wp-content/uploads/20191203145257/360a9179134324db09f345ef1c8f98b2-700x400.png)",
                        "url(https://c4.wallpaperflare.com/wallpaper/865/102/489/video-games-nature-river-fantasy-art-wallpaper-preview.jpg)",
+                        "url(https://i.imgur.com/P3UPB1H.jpg)",
                        "url(https://image.freepik.com/free-vector/medieval-castle-throne-room-ballroom-interior-with-knights-armor-both-sides-king_33099-892.jpg)",
                        ];
 
@@ -891,9 +939,10 @@ function changeBackground(){
     c.style.backgroundImage = backgroundImages[1];
   } else if (currentStage === stage3){
     c.style.backgroundImage = backgroundImages[2];
-  // } else if (currentStage === stage4){
-  //   c.style.backgroundImage = backgroundImages[3];
-  // }
+  } else if (currentStage === stage4){
+    c.style.backgroundImage = backgroundImages[3];
+  } else if (currentStage === "stage5"){
+    c.style.backgroundImage = backgroundImages[4];
   }
 }
 
