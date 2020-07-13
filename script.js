@@ -17,7 +17,7 @@ $("#restart").hide();
 $(".restartHard").hide();
 $("#resume").hide();
 $("#quit").hide();
-
+$(".infiniteMode").hide();
 $("#gameOver").hide();
 $("#door").hide();
 $("#clickDoor").hide();
@@ -137,6 +137,7 @@ class Battler {
         $("#restart").show();
         $(".restartHard").show();
         $("#quit").show();
+        $(".infiniteMode").show();
         pause();
       }
       this.destroySelf();
@@ -988,6 +989,8 @@ let infiniteStage = new Stage((stage) => {
   
 }, (stage) => {
   //on stage end repeat spawn
+  console.log(`Level ${stage.loop}`);
+  let mobCount = randomInt(0, stage.loop);
   
 });
 
@@ -1027,6 +1030,9 @@ function initGame(isHard, isInfinite){
     }
     objectList = [mainChar];
     currentStage = infiniteStage;
+    infiniteStage.loop = 1;
+    dialogueController.container.hide();
+    dialogueController.queue = [];
     infiniteStage.startStage();
     mainChar.jumpTo(50, 250);
   }
@@ -1079,6 +1085,7 @@ $(".restartHard").click(function(){
   $(".restartHard").hide();
   $("#quit").hide();
   $("#gameOver").hide();
+  $(".infiniteMode").hide();
 });
 
 $(".infiniteMode").click(function(){
@@ -1087,6 +1094,7 @@ $(".infiniteMode").click(function(){
   $("#resume").hide();
   $("#restart").hide();
   $(".restartHard").hide();
+  $(".infiniteMode").hide();
   $("#quit").hide();
   $("#gameOver").hide();
 });
